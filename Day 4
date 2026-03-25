@@ -1,0 +1,99 @@
+# Day 3 Task
+Join tables 
+Aggregate data 
+Filter groups 
+Rank results 
+Handle edge cases 
+
+USE sql_practice;
+
+CREATE TABLE CUSTOMER (
+	Customer_id INT AUTO_INCREMENT PRIMARY KEY,
+    Customer_name VARCHAR(50),
+    City VARCHAR(50)
+);
+
+CREATE TABLE ORDERS (
+	Order_id INT AUTO_INCREMENT PRIMARY KEY,
+    Customer_id INT,
+    Order_amount INT,
+    Order_status VARCHAR(50),
+    FOREIGN KEY (Customer_id) REFERENCES CUSTOMER(Customer_id)
+);
+
+INSERT INTO CUSTOMER(Customer_name, City) VALUES 
+('Radha', 'Birj'),
+('Krishn', 'Gokul'),
+('Asha', 'Mumbai'),
+('Rahul', 'Delhi'),
+('Neha', 'Mumbai'),
+('Amit', 'Bangalore');
+
+INSERT INTO ORDERS(Customer_id, Order_amount, Order_status) VALUES
+(1, 5000, 'Delivered'),
+(2, 4000, 'Pending'),
+(3, 3500, 'Cancelled'),
+(4, 700, 'Delivered'),
+(5, 1800, 'Delivered'),
+(6, 3400, 'Cancelled');
+
+TRUNCATE TABLE ORDERS;
+SELECT * FROM CUSTOMER;
+SELECT * FROM ORDERS;
+
+INSERT INTO ORDERS(Customer_id, Order_amount, Order_status) VALUES
+(1, 5000, 'Delivered'),
+(2, Null , Null);
+
+INSERT INTO CUSTOMER(Customer_name, City) VALUES 
+('Pooja', 'Birj'),
+('Shyam', 'Gokul');
+INSERT INTO CUSTOMER(Customer_name, City) VALUES 
+('Om', 'Pune'),
+('Pavan', 'Goa');
+
+INSERT INTO ORDERS(Customer_id, Order_amount, Order_status) VALUES
+(7, NULL, NULL),
+(8, NULL, NULL);
+-- Joins queries
+
+-- 1. INNER JOIN
+SELECT c.Customer_name, o.Order_amount
+FROM CUSTOMER c
+INNER JOIN ORDERS o 
+ON c.Customer_id = o.Customer_id;
+
+--  INNER JOIN using WHERE Clause
+SELECT c.Customer_name, o.Order_amount
+FROM CUSTOMER c
+INNER JOIN ORDERS o 
+ON c.Customer_id = o.Customer_id
+WHERE o.Order_status = 'Delivered';
+
+-- 2. LEFT JOIN
+SELECT c.Customer_name, o.Order_amount
+FROM CUSTOMER c
+LEFT JOIN ORDERS o
+ON c.Customer_id = o.Customer_id;
+
+SELECT c.Customer_name, o.Order_status
+FROM CUSTOMER c
+LEFT JOIN ORDERS o
+ON c.Customer_id = o.Customer_id
+AND o.Order_status = 'Delivered';
+
+SELECT C.Customer_id, C.Customer_name, COUNT(O.Customer_id) AS Total_no_of_order
+FROM CUSTOMER C
+LEFT JOIN ORDERS O
+ON C.Customer_id = O.Customer_id
+GROUP BY C.Customer_id, C.Customer_name
+HAVING  COUNT(O.Customer_id) > 1;
+
+SELECT C.Customer_id, C.Customer_name, COALESCE(SUM(O.Order_amount), 0) AS Total_purchase
+FROM CUSTOMER C
+LEFT JOIN ORDERS O
+ON C.Customer_id = O.Customer_id
+GROUP BY C.Customer_id, C.Customer_name
+ORDER BY Total_purchase DESC
+LIMIT 2;
+
