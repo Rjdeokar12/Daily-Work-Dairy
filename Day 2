@@ -1,0 +1,73 @@
+# Aggregate Functions
+
+SELECT COUNT(*)
+FROM Customers;
+
+SELECT COUNT(*)
+FROM Customers
+WHERE City = 'Mumbai';
+
+SELECT COUNT(City)
+FROM Customers;
+
+ALTER TABLE Customers
+ADD Order_amt INT DEFAULT 1000;
+
+SELECT * FROM Customers;
+
+SELECT SUM(Order_amt)
+FROM Customers;
+
+SELECT AVG(Order_amt)
+FROM Customers;
+
+ALTER TABLE Customers
+ADD Order_status VARCHAR(50);
+
+UPDATE Customers
+SET order_status = CASE
+	WHEN Cus_id = 1 THEN 'Delivered'
+    WHEN Cus_id = 2 THEN 'Cancelled'
+	WHEN Cus_id = 3 THEN 'Delivered'
+    WHEN Cus_id = 4 THEN 'Cancelled'
+    WHEN Cus_id = 5 THEN 'Delivered'
+    WHEN Cus_id = 6 THEN 'Cancelled'
+END;
+
+SELECT * FROM Customers;
+
+SELECT SUM(Order_amt)
+FROM Customers
+WHERE Order_status = 'Delivered';
+    
+SELECT City, COUNT(*)
+FROM Customers 
+GROUP BY City;
+
+SELECT City, SUM(Order_amt)
+FROM Customers
+GROUP BY City;
+
+SELECT City, AVG(Order_amt)
+FROM Customers
+GROUP BY City;
+
+SELECT City , SUM(Order_amt)
+FROM Customers
+WHERE City = 'Mumbai'
+GROUP BY City ;
+
+SELECT City, SUM(Order_amt)
+FROM customers
+GROUP BY City
+HAVING SUM(Order_amt) > 1500;
+
+SELECT City, AVG(Order_amt)
+FROM Customers
+GROUP BY City
+HAVING AVG(Order_amt) > 800;
+
+SELECT City, COUNT(*) AS Customer_count
+FROM Customers
+GROUP BY City
+HAVING COUNT(Cus_id) > 1;
