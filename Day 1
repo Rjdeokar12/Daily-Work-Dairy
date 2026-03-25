@@ -1,0 +1,66 @@
+Create database sql_practice;
+
+Use sql_practice;
+Create Table Customers(
+	Cus_id INT,
+    Cus_name VARCHAR(100),
+    City VARCHAR(100)
+);
+
+INSERT INTO Customers(Cus_id, Cus_name, City) VALUES
+(1, 'Radha', 'Birj'),
+(2, 'Krishn', 'Gokul'),
+(3, 'Asha', 'Mumbai'),
+(4, 'Rahul', 'Delhi'),
+(5, 'Neha', 'Mumbai'),
+(6, 'Amit', 'Bangalore');
+
+SELECT * FROM Customers;
+SELECT cus_name, city from Customers;
+SELECT cus_name from Customers;
+Describe customers;
+
+SELECT * FROM customers WHERE city = 'Mumbai';
+SELECT * FROM customers WHERE city != 'Mumbai';
+
+-- For or you must repeaat the condition after or 
+SELECT * FROM customers WHERE City = 'Mumbai' OR City = 'Delhi';
+
+SELECT * FROM customers WHERE City IN ('Mumbai','Delhi');
+SELECT * FROM customers WHERE City IN ('Mumbai','Bangalore');
+SELECT * FROM customers WHERE City not IN ('Mumbai','Bangalore');
+
+Select * From Customers WHERE City = 'Mumbai' AND Cus_id > 1; 
+Select * From Customers WHERE City = 'Delhi' or( City = 'Bangalore' AND Cus_id > 1); 
+Select * From Customers WHERE (City = 'Mumbai' or City = 'Delhi') AND Cus_id < 3; 
+
+Select * 
+FROM Customers
+WHERE Cus_name LIKE '%A';
+
+Select * 
+FROM Customers
+WHERE Cus_name LIKE 'A%';
+
+Select * 
+FROM Customers
+WHERE Cus_name LIKE '%h%';
+
+SELECT * 
+FROM Customers
+WHERE Cus_id BETWEEN 1 AND 3;
+
+SELECT * 
+FROM Customers
+WHERE City IS NOT NULL;
+
+SELECT * 
+FROM Customers
+WHERE Cus_name LIKE 'A%' 
+	AND Cus_id BETWEEN 1 AND 3;
+
+SELECT * 
+FROM Customers
+WHERE Cus_name LIKE '%a%'
+	AND City = 'Mumbai';
+    
