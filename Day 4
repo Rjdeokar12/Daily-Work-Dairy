@@ -1,0 +1,126 @@
+-- Practice Questions/Queries
+-- Q1 Find total revenue generated per customer
+SELECT C.Customer_id, C.Customer_name, COALESCE(SUM(O.Order_amount), 0) AS Total_revenue_per_customer
+FROM CUSTOMER C
+LEFT JOIN ORDERS O
+ON C.Customer_id = O.Customer_id
+GROUP BY C.Customer_id, C.Customer_name;
+
+-- Q2 Find top 2 cities based on total order amount
+SELECT C.City, COALESCE(SUM(O.Order_amount), 0) AS Total_Order_Amount
+FROM CUSTOMER C
+LEFT JOIN ORDERS O
+ON C.Customer_id = O.Customer_id
+GROUP BY C.City 
+ORDER BY Total_Order_Amount DESC
+LIMIT 2;
+
+-- Q3 Find customers who have placed at least 2 orders
+SELECT C.Customer_id, C.Customer_name, COUNT(O.Order_id) AS No_of_Orders
+FROM CUSTOMER C
+LEFT JOIN ORDERS O
+ON C.Customer_id = O.Customer_id
+GROUP BY C.Customer_id, C.Customer_name
+HAVING COUNT(O.Order_id) >= 2;
+
+-- Q4 Find customers who have NOT placed any orders
+SELECT C.Customer_id, C.Customer_name, COUNT(O.Order_id) AS No_of_Orders
+FROM CUSTOMER C
+LEFT JOIN ORDERS O
+ON C.Customer_id = O.Customer_id
+WHERE O.Order_id IS NULL
+GROUP BY C.Customer_id, C.Customer_name;
+
+-- Q5 Find average order amount per customer
+SELECT C.Customer_id, C.Customer_name, COALESCE(AVG(O.Order_amount), 0) AS Avg_order_amount
+FROM CUSTOMER C
+LEFT JOIN ORDERS O
+ON C.Customer_id = O.Customer_id
+GROUP BY C.Customer_id, C.Customer_name;
+
+-- Q6 Find total number of orders per city
+SELECT C.City, COUNT(O.Order_id) AS No_of_Orders
+FROM CUSTOMER C
+LEFT JOIN ORDERS O
+ON C.Customer_id = O.Customer_id
+GROUP BY C.City;
+
+-- Q7 Find city with highest total revenue
+SELECT C.City, COALESCE(SUM(O.Order_amount), 0) AS Total_Revenue
+FROM CUSTOMER C
+LEFT JOIN ORDERS O
+ON C.Customer_id = O.Customer_id
+GROUP BY C.City
+ORDER BY Total_Revenue DESC
+LIMIT 1;
+
+-- Q8 Find top 3 customers based on total order amount
+SELECT C.Customer_id, C.Customer_name, COALESCE(SUM(O.Order_amount), 0) AS Total_order_amount
+FROM CUSTOMER C
+LEFT JOIN ORDERS O
+ON C.Customer_id = O.Customer_id
+GROUP BY C.Customer_id, C.Customer_name
+ORDER BY Total_order_amount DESC
+LIMIT 3;
+
+-- Q9 Find customers whose total order amount > 5000
+SELECT C.Customer_id, C.Customer_name, COALESCE(SUM(O.Order_amount), 0) AS Total_order_amount
+FROM CUSTOMER C
+LEFT JOIN ORDERS O
+ON C.Customer_id = O.Customer_id
+GROUP BY C.Customer_id, C.Customer_name
+HAVING COALESCE(SUM(O.Order_amount), 0) > 5000;
+
+-- Q10 Find cities where average order amount > 2000
+SELECT C.City, COALESCE(AVG(O.Order_amount), 0) AS Avg_order_amount
+FROM CUSTOMER C
+LEFT JOIN ORDERS O
+ON C.Customer_id = O.Customer_id
+GROUP BY C.City
+HAVING COALESCE(AVG(O.Order_amount), 0) > 2000;
+
+-- Q11 Find customers who have placed exactly 1 order
+SELECT C.Customer_id, C.Customer_name, COUNT(O.Order_id) AS No_of_orders
+FROM CUSTOMER C
+LEFT JOIN ORDERS O
+ON C.Customer_id = O.Customer_id
+GROUP BY C.Customer_id, C.Customer_name
+HAVING COUNT(O.Order_id) = 1;
+
+-- Q12 Find total revenue for each city (ignore customers with no orders)
+SELECT C.City, COALESCE(SUM(O.Order_amount), 0) AS Total_Revenue
+FROM CUSTOMER C
+INNER JOIN ORDERS O
+ON C.Customer_id = O.Customer_id
+GROUP BY C.City
+ORDER BY Total_Revenue DESC;
+
+-- Q13 Find customer who has highest single order (not total)
+SELECT C.Customer_id, C.Customer_name, O.Order_amount
+FROM CUSTOMER C
+INNER JOIN ORDERS O
+ON C.Customer_id = O.Customer_id
+ORDER BY O.Order_amount DESC
+LIMIT 1;
+
+-- Q14 Find customers who have orders but none are 'Delivered'
+-- IMPORTANT OBSERVATIONS
+-- IN THIS QUERY, IT ALSO INCLUDE CUSTOMERS NO ORDERS that's why o/p is different
+SELECT C.Customer_id, C.Customer_name
+FROM CUSTOMER C
+WHERE C.Customer_id NOT IN (
+	SELECT Customer_id
+    FROM ORDERS
+    WHERE Order_status = 'Delivered'
+);
+
+-- IN THIS QUERY, CUSTOMERS WITH NO ORDERS IS EXCLUDED for above this on perfect query
+SELECT C.Customer_id, C.Customer_name
+FROM CUSTOMER C
+JOIN ORDERS O
+ON C.Customer_id = O.Customer_id
+GROUP BY C.Customer_id, C.Customer_name
+HAVING SUM(CASE 
+              WHEN O.Order_status = 'Delivered' THEN 1 
+              ELSE 0 
+           END) = 0;
