@@ -1,0 +1,101 @@
+-- CASE WHEN.... THEN...
+-- SYNTAX :
+-- CASE 
+-- 		WHEN condition THEN result
+-- 		WHEN condition THEN result
+-- 		ELSE result
+-- END
+
+-- Q1 Classify each customer as 'High' or 'Low' based on whether their total order amount is greater than 3000.'
+SELECT 
+	C.Customer_name, 
+    COALESCE(SUM(O.Order_amount), 0) AS Total_spent,
+    
+	CASE
+		WHEN COALESCE(SUM(O.Order_amount), 0) > 3000 THEN 'HIGH'
+        ELSE 'LOW'
+	END AS Customer_type
+    
+FROM CUSTOMER C
+LEFT JOIN ORDERS O
+	ON C.Customer_id = O.Customer_id
+    
+GROUP BY 
+	C.Customer_id, 
+    C.Customer_name;
+
+-- Q2 Classify each customer as 'Premium' or 'Regular' based on whether their total order amount is greater than 6000.
+SELECT 
+	C.Customer_id, 
+    C.Customer_name, 
+    COALESCE(Sum(O.Order_amount), 0) AS Total_spent,
+    
+	CASE 
+		WHEN COALESCE(SUM(O.Order_amount), 0) > 6000 THEN 'Premium'
+        ELSE 'Regular'
+	END AS Customer_type
+    
+FROM CUSTOMER C
+LEFT JOIN ORDERS O
+	ON C.Customer_id = O.Customer_id
+    
+GROUP BY 
+	C.Customer_id, 
+    C.Customer_name;
+
+-- Q3 Find the total number of Delivered orders and Cancelled orders in the ORDERS table.
+SELECT 
+	SUM (
+		CASE 
+			WHEN Order_status = 'Delivered' THEN 1 
+			ELSE 0 
+        END) AS Total_delivered_orders,
+	SUM ( 
+		CASE 
+			WHEN Order_status = 'Cancelled' THEN 1 
+            ELSE 0 
+		END) AS Total_Cancelled_orders
+        
+FROM ORDERS;
+
+-- Q4 For each customer, show the number of Delivered orders and Cancelled orders.
+SELECT 
+	C.Customer_id, 
+    C.Customer_name,
+    
+	SUM(CASE WHEN O.Order_status = 'Delivered' THEN 1 ELSE 0 END) AS Delivered_orders,
+	SUM(CASE WHEN O.Order_status = 'Cancelled' THEN 1 ELSE 0 END) AS Cancelled_orders,
+	SUM(CASE WHEN O.Order_status = 'Pending' THEN 1 ELSE 0 END) AS Pending_orders
+    
+FROM CUSTOMER C
+LEFT JOIN ORDERS O
+	ON C.Customer_id = O.Customer_id
+    
+GROUP BY 
+	C.Customer_id, 
+    C.Customer_name;
+
+-- Q5 Calculate the delivery success rate 
+-- (percentage of delivered orders out of total orders) for each customer, 
+-- ensuring that customers with zero orders return 0 instead of causing a division error.
+SELECT
+	C.Customer_id,
+    C.Customer_name,
+    
+    SUM(CASE WHEN O.Order_status = 'Delivered' THEN 1 ELSE 0 END) AS Delivered_orders,
+    COUNT(O.Order_id) AS Total_orders,
+    
+    CASE
+		WHEN COUNT(O.Order_id) = 0 THEN 0
+        ELSE
+			ROUND((SUM(CASE WHEN O.Order_status = 'Delivered' THEN 1 ELSE 0  END) * 100.0 /
+			COUNT(O.Order_id)), 2)
+	END AS Delivery_success_rate
+    
+FROM CUSTOMER C
+LEFT JOIN ORDERS O
+	ON C.Customer_id = O.Customer_id
+
+GROUP BY 
+	C.Customer_id,
+    C.Customer_name;
