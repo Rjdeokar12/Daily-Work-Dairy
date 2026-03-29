@@ -1,0 +1,80 @@
+# Using same database some advanced queries i have written
+-- Q6 Show order_date and total number of orders per day
+SELECT 
+	Order_date, 
+    COUNT(Order_id) AS Total_orders_per_day
+FROM ORDERS 
+GROUP BY Order_date;
+
+-- Q7 Show order_date and total revenue per day from orders table.
+SELECT 
+	Order_date,
+    COALESCE(SUM(Order_amount), 0) AS Revenue_per_day
+FROM ORDERS
+GROUP BY Order_date;
+
+-- Q8 “Find the day with highest total revenue.”
+SELECT 
+	Order_date,
+    COALESCE(SUM(Order_amount), 0) AS Revenue_per_day
+FROM ORDERS
+GROUP BY Order_date
+ORDER BY Revenue_per_day DESC
+LIMIT 1;
+
+-- Q9 Find Delivery performance by date
+SELECT 
+	Order_date, 
+    COUNT(Order_id) AS Total_Orders,
+    SUM(CASE WHEN Order_status = 'Delivered' THEN 1 ELSE 0 END ) 
+    AS Delivered_Order
+FROM ORDERS
+GROUP BY Order_date, Order_status;
+
+-- 10 Find daily delivery success rate(%)
+SELECT 
+	Order_date,
+    CASE
+		WHEN COUNT(Order_id) = 0 THEN 0
+        ELSE
+			ROUND(
+				SUM(CASE WHEN Order_status = 'Delivered' THEN 1 ELSE 0 END) * 100.0
+				/ COUNT(Order_id), 2) 
+	END AS Delivery_success_rate
+FROM ORDERS
+GROUP BY Order_date;
+
+-- Q11 “Show order_date, total revenue, and previous day revenue using window function.”
+SELECT
+	Order_date,
+    Revenue,
+    COALESCE(LAG(Revenue) OVER (ORDER BY Order_date), 0) AS Previous_Day_Revenue    
+FROM 
+	(SELECT
+		Order_date,
+        COALESCE(SUM(Order_amount), 0)AS Revenue
+	FROM ORDERS
+    GROUP BY Order_date
+    )t
+ORDER BY Order_date DESC;
+
+-- Q12 “Show order_date, revenue, previous day revenue, and difference between current and previous day revenue.”
+SELECT
+	Order_date,
+    Revenue,
+    Previous_Day_Revenue,
+    (Revenue - Previous_Day_Revenue) AS Revenue_diff
+FROM
+	(SELECT
+		Order_date,
+        Revenue,
+		COALESCE(LAG(Revenue) OVER (ORDER BY Order_date), 0) AS Previous_Day_Revenue
+		FROM 
+			(SELECT
+				Order_date,
+				COALESCE(SUM(Order_amount), 0)AS Revenue
+			FROM ORDERS
+			GROUP BY Order_date
+			)t1
+		)t2
+ORDER BY Order_date DESC;
