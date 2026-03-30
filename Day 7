@@ -78,3 +78,78 @@ FROM
 			)t1
 		)t2
 ORDER BY Order_date DESC;
+
+-- Q13 	Find the Growth rate
+SELECT    
+	Order_date,
+    Revenue,
+    Previous_per_day,
+    CASE 
+		WHEN Previous_per_day = 0 THEN 0
+        ELSE ROUND((Revenue - Previous_per_day)*100.0 / Previous_per_day, 2)
+	END AS Growth_rate
+FROM (
+	SELECT
+		Order_date, 
+        Revenue,
+        COALESCE(LAG(Revenue) OVER (ORDER BY Order_date), 0) AS Previous_per_day
+        FROM (
+			SELECT
+				Order_date,
+                COALESCE(SUM(Order_amount), 0) as Revenue
+			FROM ORDERS
+            GROUP BY Order_date
+		)t1
+	)t2
+ORDER BY Order_date;
+                
+-- Q14 “Find top 2 days with highest revenue using RANK()”
+SELECT *
+FROM (
+	SELECT
+		Order_date,
+		Revenue,
+		DENSE_RANK() OVER (ORDER BY Revenue DESC) AS Rank_no
+	FROM (
+		SELECT
+			Order_date,
+			SUM(Order_amount) AS Revenue
+		FROM ORDERS
+		GROUP BY Order_date
+		)t1
+	)t2
+WHERE Rank_no <=2;
+
+-- Q15 Find the highest day as per growth rate
+SELECT *
+FROM (
+	SELECT 
+		Order_date,
+		Growth_rate,
+		DENSE_RANK() OVER (ORDER BY Growth_rate DESC) AS Rank_no 
+	FROM (	
+		SELECT    
+			Order_date,
+			Revenue,
+			Previous_per_day,
+			CASE 
+				WHEN Previous_per_day = 0 THEN 0
+				ELSE ROUND((Revenue - Previous_per_day)*100.0 / Previous_per_day, 2)
+			END AS Growth_rate
+		FROM (
+			SELECT
+				Order_date, 
+				Revenue,
+				COALESCE(LAG(Revenue) OVER (ORDER BY Order_date), 0) AS Previous_per_day
+				FROM (
+					SELECT
+						Order_date,
+						COALESCE(SUM(Order_amount), 0) as Revenue
+					FROM ORDERS
+					GROUP BY Order_date
+				)t1
+			)t2
+		)t3
+	)t4
+WHERE Rank_no = 1;
+                
