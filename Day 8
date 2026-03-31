@@ -1,0 +1,145 @@
+Use sql_practice;
+
+-- CTE - COMMON TABLE EXPRESSION
+
+-- PRACTICE EXAMPLES
+
+-- 1. Find top 3 customers based on total revenue using CTE
+WITH Top_Customers AS (
+	SELECT 
+		Customer_id,
+        SUM(Order_amount) AS Total_Revenue
+	FROM ORDERS
+    GROUP BY Customer_id
+    ORDER BY Total_Revenue DESC
+	LIMIT 3
+)
+SELECT 
+	C.Customer_name,
+    TC.Total_Revenue
+FROM Top_Customers TC
+JOIN CUSTOMER C
+ON C.Customer_id = TC.Customer_id;
+
+-- 2. Find customers whose revenue is greater than the average revenue of all customers (use CTE)
+WITH Customer_Revenue AS (
+	SELECT
+		Customer_id,
+        SUM(Order_amount) AS Total_Revenue
+	FROM ORDERS
+    GROUP BY Customer_id
+),
+Avg_Revenue AS (
+	SELECT
+		AVG(Total_Revenue) AS Avg_Revenue
+	FROM Customer_Revenue
+)
+SELECT 
+	C.Customer_name,
+    CR.Total_Revenue
+FROM Customer_Revenue CR
+JOIN CUSTOMER C
+	ON C.Customer_id = CR.Customer_id
+CROSS JOIN Avg_Revenue AR
+WHERE CR.Total_Revenue > AR.Avg_Revenue;
+
+-- 3. Find top customer in each city based on total revenue
+WITH City_Revenue AS (
+	SELECT
+		C.Customer_id,
+        C.City,
+        C.Customer_name,
+        COALESCE(SUM(Order_amount), 0) AS Total_Revenue
+	FROM CUSTOMER C
+    LEFT JOIN ORDERS O
+    ON C.Customer_id = O.Customer_id
+    GROUP BY 
+		C.Customer_id,
+        C.Customer_name,
+        C.City
+),
+Revenue_ranking AS (
+	SELECT *,
+    	DENSE_RANK() OVER (
+			PARTITION BY City 
+            ORDER BY Total_Revenue DESC
+		) AS Rank_no
+	FROM City_Revenue
+)
+SELECT 
+	City,
+	Customer_name,
+    Total_Revenue
+FROM Revenue_ranking
+WHERE Rank_no = 1;
+    
+-- 4. Find the second highest revenue customer in each city
+WITH Customer_Revenue AS (
+	SELECT
+		C.Customer_id,
+        C.Customer_name,
+        C.City,
+        COALESCE(SUM(O.Order_amount), 0) AS Total_Revenue
+	FROM CUSTOMER C
+    LEFT JOIN ORDERS O
+		ON C.Customer_id = O.Customer_id
+	GROUP BY 
+		C.Customer_id,
+        C.Customer_name,
+        C.City
+), 
+Ranked_Customers AS (
+	SELECT *, 
+		DENSE_RANK() OVER (
+			PARTITION BY City
+            ORDER BY Total_Revenue DESC
+		) AS Rank_no
+	FROM Customer_Revenue
+)
+SELECT
+	City,
+    Customer_name,
+    Total_Revenue
+FROM Ranked_Customers
+WHERE Rank_no = 2;
+
+-- 5. Find cities where the top customer contributes more than 50% of total city revenue
+WITH Customer_Revenue AS (
+	SELECT
+		C.Customer_id,
+        C.Customer_name,
+        C.City,
+        COALESCE(SUM(O.Order_amount), 0) AS Total_Revenue
+	FROM CUSTOMER C
+    LEFT JOIN ORDERS O
+		ON C.Customer_id = O.Customer_id
+	GROUP BY 
+		C.Customer_id,
+        C.Customer_name,
+        C.City
+), 
+City_Revenue AS (
+	SELECT 
+		City,
+		SUM(Total_revenue) AS City_Total
+	FROM Customer_Revenue
+    GROUP BY City
+),
+Ranked_Customers AS (
+	SELECT *, 
+		DENSE_RANK() OVER (
+			PARTITION BY City
+            ORDER BY Total_Revenue DESC
+		) AS Rank_no
+	FROM Customer_Revenue
+)
+SELECT
+	RC.City,
+    RC.Customer_name,
+    RC.Total_Revenue,
+    CR.City_Total
+FROM Ranked_Customers RC
+JOIN City_Revenue CR
+	ON RC.City = CR.City
+WHERE Rank_no = 1
+AND RC.Total_Revenue > 0.5 * CR.City_Total;
