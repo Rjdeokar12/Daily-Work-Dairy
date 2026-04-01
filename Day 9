@@ -1,0 +1,127 @@
+# Practices examples of Advanced CTE And Window Functions
+
+-- 1. Find cities where the TOP 2 customers together contribute more than 70% of total city revenue
+WITH Ranked_Data AS (
+	SELECT
+		C.City,
+        C.Customer_id,
+        SUM(O.Order_amount) AS Total_Revenue,
+        DENSE_RANK() OVER (
+			PARTITION BY C.City
+            ORDER BY SUM(O.Order_amount) DESC
+		) AS RNK
+	FROM CUSTOMER C
+    LEFT JOIN ORDERS O
+		ON C.Customer_id = O.Customer_id
+	GROUP BY C.City, C.Customer_id
+)
+SELECT
+	City,
+    SUM(CASE WHEN RNK <= 2 THEN Total_Revenue ELSE 0 END) AS Top2_Revenue,
+    SUM(Total_Revenue) AS City_Revenue
+FROM Ranked_Data
+GROUP BY City
+HAVING SUM(CASE WHEN RNK <= 2 THEN Total_Revenue ELSE 0 END) 
+> 0.7 * SUM(Total_Revenue);
+
+-- Using Subquery
+SELECT
+	City,
+	SUM(CASE WHEN RNK <= 2 THEN Total_Revenue ELSE 0 END) AS Top2_Revenue,
+	SUM(Total_Revenue) AS City_revenue
+FROM (
+	SELECT
+		C.City,
+		C.Customer_id,
+		SUM(O.Order_amount) AS Total_Revenue,
+		DENSE_RANK() OVER (
+			PARTITION BY C.City
+			ORDER BY SUM(O.Order_amount) DESC
+		) AS RNK
+	FROM CUSTOMER C
+	LEFT JOIN ORDERS O
+		ON C.Customer_id = O.Customer_id
+	GROUP BY C.City, C.Customer_id
+) t
+GROUP BY City
+HAVING SUM(CASE WHEN RNK <= 2 THEN Total_Revenue ELSE 0 END) 
+       > 0.7 * SUM(Total_Revenue);
+
+-- 2. For each order: show Order_id, Customer_id, Order_amount, Rank of order within that customer (highest amount = 1)
+SELECT
+	Order_id,
+	Customer_id,
+	Order_amount,
+	SUM(Order_amount) OVER (PARTITION BY Customer_id) AS Total_spent,
+    DENSE_RANK() OVER (
+		PARTITION BY Customer_id
+		ORDER BY Order_amount DESC
+	) AS RNK
+FROM ORDERS;
+
+-- 3. Show only top 2 highest orders per customer
+SELECT * 
+FROM (
+	SELECT
+		Order_id,
+		Customer_id,
+		Order_amount,
+		DENSE_RANK() OVER (
+			PARTITION BY Customer_id
+			ORDER BY Order_amount DESC
+		) AS RNK 
+	FROM ORDERS
+    )t
+WHERE RNK <= 2;
+
+-- 4. Get top 2 unique revenue values per customer (include ties)
+SELECT * 
+FROM (
+	SELECT
+		Order_id,
+		Customer_id,
+		Order_amount,
+		ROW_NUMBER() OVER (
+			PARTITION BY Customer_id
+			ORDER BY Order_amount DESC
+		) AS RN
+	FROM ORDERS
+    )t
+WHERE RN <= 2;
+
+-- 5. Top 2 orders per customer but only if order_amount > average order of that customer
+SELECT * 
+FROM (
+	SELECT
+		Order_id,
+		Customer_id,
+		Order_amount,
+		AVG(Order_amount) OVER (PARTITION BY Customer_id) AS Avg_spent,
+		ROW_NUMBER() OVER (
+			PARTITION BY Customer_id
+			ORDER BY Order_amount DESC
+		) AS RN
+	FROM ORDERS
+    )t
+WHERE Order_amount >= Avg_spent
+AND RN <= 2;
+
+-- 6. Top 2 orders per customer but ONLY among orders greater than average
+SELECT * 
+FROM (
+	SELECT *,
+		DENSE_RANK() OVER (
+			PARTITION BY Customer_id
+			ORDER BY Order_amount DESC
+		) AS RNK
+	FROM (
+		SELECT 
+			Order_id,
+			Customer_id,
+			Order_amount,
+			AVG(Order_amount) OVER (PARTITION BY Customer_id) AS Avg_spent
+        FROM ORDERS
+        )t1
+		 WHERE Order_amount > Avg_spent
+    )t2
+WHERE RNK <= 2;
