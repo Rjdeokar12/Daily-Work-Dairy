@@ -1,0 +1,24 @@
+-- Lead() function
+SELECT
+	Order_id,
+	Customer_id,
+	Order_date,
+	Order_amount,
+	COALESCE(
+		LEAD(Order_amount) OVER (
+			PARTITION BY Customer_id
+			ORDER BY Order_date
+		), 0
+	) AS Next_order_amount
+FROM ORDERS;
+
+-- Running Total
+SELECT
+	Customer_id,
+	Order_date,
+	Order_amount,
+	SUM(Order_amount) OVER (
+		PARTITION BY Customer_id
+		ORDER BY Order_date
+	) AS Running_Total
+FROM ORDERS;
