@@ -1,0 +1,143 @@
+-- 👉 Show running total AND total spent (final total) in same query
+SELECT 
+	Customer_id,
+    Order_id,
+    Order_date,
+    Order_amount,
+    
+    COALESCE(SUM(Order_amount) OVER (
+		PARTITION BY Customer_id
+        ORDER BY Order_date, Order_id
+	), 0) AS Running_Total,
+    
+    SUM(Order_amount) OVER (
+		PARTITION BY Customer_id
+	) AS Total_Spent
+    
+FROM ORDERS;
+
+-- 👉 Running average per customer
+SELECT 
+	Customer_id,
+    Order_date,
+    Order_amount,
+    
+    AVG(Order_amount) OVER (
+		PARTITION BY Customer_id
+        ORDER BY Order_date, Order_id
+	) AS Running_Avg
+    
+FROM ORDERS;
+
+-- 👉 Get first order of each customer
+SELECT *
+FROM (
+	SELECT 
+		Customer_id,
+		Order_id,
+		Order_date,
+		ROW_NUMBER () OVER (
+			PARTITION BY Customer_id
+			ORDER BY Order_date, Order_id
+		) AS RN
+	FROM ORDERS
+    )t
+WHERE RN = 1;
+
+-- 👉 Get second order of each customer
+SELECT *
+FROM (
+	SELECT 
+		Customer_id,
+		Order_id,
+		Order_date,
+		ROW_NUMBER () OVER (
+			PARTITION BY Customer_id
+			ORDER BY Order_date, Order_id
+		) AS RN
+	FROM ORDERS
+	)t
+WHERE RN = 2;
+
+-- 👉 Get second highest order amount per customer
+SELECT *
+FROM (
+	SELECT
+		Customer_id,
+		Order_id,
+		Order_amount,
+		DENSE_RANK() OVER (
+			PARTITION BY Customer_id
+			ORDER BY Order_amount DESC
+		) as RNK
+	FROM ORDERS
+    )t
+WHERE RNK = 2;
+
+--  👉 Get customers whose LATEST order is greater than their average
+SELECT *
+FROM (
+	SELECT
+		Customer_id,
+		Order_id,
+		Order_amount,
+        Order_date,
+        
+        AVG(Order_amount) OVER (
+			PARTITION BY Customer_id
+		) AS Avg_order,
+        
+		ROW_NUMBER () OVER (
+			PARTITION BY Customer_id
+			ORDER BY Order_date, Order_id
+		) AS RN
+        
+	FROM ORDERS
+	)t
+WHERE RN = 1 
+AND Order_amount > Avg_order;
+
+--  👉 Get customers whose first order is greater than their average
+SELECT *
+FROM (
+	SELECT
+		Customer_id,
+		Order_id,
+		Order_amount,
+        Order_date,
+        
+        AVG(Order_amount) OVER (
+			PARTITION BY Customer_id
+		) AS Avg_order,
+        
+		ROW_NUMBER () OVER (
+			PARTITION BY Customer_id
+			ORDER BY Order_date DESC, Order_id DESC
+		) AS RN
+        
+	FROM ORDERS
+	)t
+WHERE RN = 1 
+AND Order_amount >= Avg_order;
+
+--  👉 Find customers whose latest order is the highest order they ever placed
+SELECT *
+FROM (
+	SELECT
+		Customer_id,
+		Order_id,
+		Order_amount,
+		Order_date,
+
+		MAX(Order_amount) OVER (
+			PARTITION BY Customer_id
+		) AS Max_order,
+
+		ROW_NUMBER() OVER (
+			PARTITION BY Customer_id
+			ORDER BY Order_date DESC, Order_id DESC
+		) AS RN
+	FROM ORDERS
+) t
+WHERE RN = 1
+AND Order_amount = Max_order;
