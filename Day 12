@@ -1,0 +1,230 @@
+SELECT 
+    Order_date,
+    Revenue_per_day,
+    LEAD(Revenue_per_day) OVER (
+        ORDER BY Order_date
+	) AS Next_day_revenue
+FROM (
+	SELECT 
+		Order_date,
+        SUM(Order_amount) AS Revenue_per_day
+    FROM ORDERS
+    GROUP BY Order_date
+    )t;
+
+SELECT *, 
+	(Revenue_per_day - COALESCE((Next_day_revenue), 0)) AS Difference
+FROM (
+	SELECT 
+		Order_date,
+		Revenue_per_day,
+		LEAD(Revenue_per_day) OVER (
+			ORDER BY Order_date
+		) AS Next_day_revenue
+	FROM (
+		SELECT 
+			Order_date,
+			COALESCE(SUM(Order_amount), 0) AS Revenue_per_day
+		FROM ORDERS
+		GROUP BY Order_date
+		)t1
+	)t2;
+    
+SELECT *, 
+	(Revenue_per_day - Next_day_revenue) AS Difference
+FROM (
+	SELECT 
+		Order_date,
+		Revenue_per_day,
+		LEAD(Revenue_per_day) OVER (
+			ORDER BY Order_date
+		) AS Next_day_revenue
+	FROM (
+		SELECT 
+			Order_date,
+			SUM(Order_amount) AS Revenue_per_day
+		FROM ORDERS
+		GROUP BY Order_date
+		)t1
+	)t2
+WHERE Revenue_per_day > Next_day_revenue;
+
+-- “Find days where revenue increased compared to previous day”
+SELECT *, 
+	CASE WHEN Previous_day_revenue IS NULL THEN NULL
+    ELSE ROUND(
+	(Revenue_per_day - Previous_day_revenue) * 100.0 / Previous_day_revenue , 2
+    ) END AS Growth_per_day
+FROM (
+	SELECT 
+		Order_date,
+		Revenue_per_day,
+		LAG(Revenue_per_day) OVER (
+			ORDER BY Order_date
+		) AS Previous_day_revenue
+	FROM (
+		SELECT 
+			Order_date,
+			SUM(Order_amount) AS Revenue_per_day
+		FROM ORDERS
+		GROUP BY Order_date
+		)t1
+	)t2;
+    
+-- “Find top 3 days with highest growth %”
+SELECT *
+FROM (
+	SELECT *,
+		DENSE_RANK() OVER (
+			ORDER BY Growth_per_day DESC
+		) AS RNK
+	FROM (
+		SELECT *, 
+			CASE WHEN Previous_day_revenue IS NULL OR Previous_day_revenue = 0 THEN NULL
+			ELSE ROUND(
+			(Revenue_per_day - Previous_day_revenue) * 100.0 / Previous_day_revenue , 2
+			) END AS Growth_per_day
+		FROM (
+			SELECT 
+				Order_date,
+				Revenue_per_day,
+				LAG(Revenue_per_day) OVER (
+					ORDER BY Order_date
+				) AS Previous_day_revenue
+			FROM (
+				SELECT 
+					Order_date,
+					SUM(Order_amount) AS Revenue_per_day
+				FROM ORDERS
+				GROUP BY Order_date
+				)t1
+			)t2
+		)t3
+	)t4
+WHERE RNK <= 3
+AND Growth_per_day IS NOT NULL;
+    
+-- “Find ONLY top 3 days with highest growth %”
+SELECT *
+FROM (
+	SELECT *,
+		ROW_NUMBER() OVER (
+			ORDER BY Growth_per_day DESC
+		) AS RN
+	FROM (
+		SELECT *, 
+			CASE WHEN Previous_day_revenue IS NULL OR Previous_day_revenue = 0 THEN NULL
+			ELSE ROUND(
+			(Revenue_per_day - Previous_day_revenue) * 100.0 / Previous_day_revenue , 2
+			) END AS Growth_per_day
+		FROM (
+			SELECT 
+				Order_date,
+				Revenue_per_day,
+				LAG(Revenue_per_day) OVER (
+					ORDER BY Order_date
+				) AS Previous_day_revenue
+			FROM (
+				SELECT 
+					Order_date,
+					SUM(Order_amount) AS Revenue_per_day
+				FROM ORDERS
+				GROUP BY Order_date
+				)t1
+			)t2
+		)t3
+	)t4
+WHERE RN <= 3
+AND Growth_per_day IS NOT NULL;
+    
+-- “Find longest streak of consecutive revenue increase days”
+SELECT 
+	Grp,
+    MIN(Order_date) AS Start_date,
+    MAX(Order_date) AS End_date,
+	Count(*) AS streak_length
+FROM (
+	SELECT *,
+		(RN_all - RN_partition) AS Grp
+	FROM (
+		SELECT *,
+			ROW_NUMBER() OVER (
+				ORDER BY Order_date
+			) AS RN_all,
+			
+			ROW_NUMBER() OVER (
+				PARTITION BY is_increasing
+				ORDER BY Order_date
+			) AS RN_partition
+		FROM (
+			SELECT 
+				Order_date,
+				Revenue_per_day,
+                Previous_day_revenue,
+				CASE 
+					WHEN Revenue_per_day > LAG(Revenue_per_day) OVER (ORDER BY Order_date) THEN 1
+					ELSE 0
+				END AS is_increasing
+			FROM (
+				SELECT 
+					Order_date,
+					SUM(Order_amount) AS Revenue_per_day,
+                    LAG(SUM(Order_amount)) OVER (
+						ORDER BY Order_date
+					) AS Previous_day_revenue
+				FROM ORDERS
+				GROUP BY Order_date
+				)t1
+			)t2
+		)t3
+	)t4
+WHERE is_increasing = 1
+GROUP BY Grp
+ORDER BY streak_length DESC
+LIMIT 1;
+
+-- “Find longest streak of consecutive revenue decrease days”
+SELECT 
+	Grp,
+    MIN(Order_date) AS Start_date,
+    MAX(Order_date) AS End_date,
+	Count(*) AS streak_length
+FROM (
+	SELECT *,
+		(RN_all - RN_partition) AS Grp
+	FROM (
+		SELECT *,
+			ROW_NUMBER() OVER (
+				ORDER BY Order_date
+			) AS RN_all,
+			
+			ROW_NUMBER() OVER (
+				PARTITION BY is_decreasing
+				ORDER BY Order_date
+			) AS RN_partition
+		FROM (
+			SELECT 
+				Order_date,
+				Revenue_per_day,
+                Previous_day_revenue,
+				CASE 
+					WHEN Revenue_per_day <= Previous_day_revenue THEN 1
+					ELSE 0
+				END AS is_decreasing
+			FROM (
+				SELECT 
+					Order_date,
+					SUM(Order_amount) AS Revenue_per_day,
+                    LAG(SUM(Order_amount)) OVER (
+						ORDER BY Order_date
+					) AS Previous_day_revenue
+				FROM ORDERS
+				GROUP BY Order_date
+				)t1
+			)t2
+		)t3
+	)t4
+WHERE is_decreasing = 1
+GROUP BY Grp
+ORDER BY streak_length DESC
+LIMIT 1;
