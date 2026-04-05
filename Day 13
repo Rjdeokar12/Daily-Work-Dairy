@@ -1,0 +1,250 @@
+# Advance Real_world Queries
+-- Find the longest streak where revenue increases by at least 10% every day
+SELECT
+	Grp,
+  MIN(Order_date) AS Start_date,
+  MAX(Order_date) AS End_date,
+  Count(*) as Streak_length
+FROM (
+	SELECT *,
+		(RN_ALL - RN_partition) AS Grp
+	FROM (
+		SELECT *,
+			ROW_NUMBER () OVER (
+				ORDER BY Order_date
+			) AS RN_ALL,
+			
+			ROW_NUMBER () OVER (
+				PARTITION BY is_increasing
+				ORDER BY Order_date
+			) AS RN_partition
+		FROM (
+			SELECT *,
+				CASE
+					WHEN Previous_day_revenue IS NOT NULL 
+						AND Previous_day_revenue != 0 
+                        AND Revenue_per_day >= Previous_day_revenue * 1.1001
+					THEN 1
+					ELSE 0
+				END AS is_increasing
+			FROM (
+				SELECT *,
+					LAG(Revenue_per_day) OVER (
+						ORDER BY Order_date
+					) AS Previous_day_revenue
+				FROM (
+					SELECT 
+						Order_date,
+						SUM(Order_amount) AS Revenue_per_day
+					FROM ORDERS
+					GROUP BY Order_date
+				)t1
+			)t2
+		)t3
+	)t4
+)t5
+WHERE is_increasing = 1
+GROUP BY Grp
+ORDER BY Streak_length DESC
+LIMIT 1;
+
+-- Find how many customers in each category per city
+WITH Customer_Total AS (
+	SELECT 
+		C.Customer_id,
+		C.City,
+		COALESCE(SUM(O.Order_amount), 0) AS Total_Spent
+	FROM CUSTOMER C
+	LEFT JOIN ORDERS O
+		ON C.Customer_id = O.Customer_id
+	GROUP BY 
+		C.Customer_id,
+		C.City
+),
+Customer_Category AS (
+	SELECT *,
+		CASE
+			WHEN Total_spent > 3000 THEN 'High Spender'
+			WHEN Total_spent BETWEEN 1000 AND 3000 THEN 'Medium Spender'
+			ELSE 'Low Spender'
+		END AS Spender_type
+	FROM Customer_Total
+)
+SELECT 
+	City,
+	Spender_type,
+	COUNT(*) AS Customer_Count
+FROM Customer_Category
+GROUP BY City, Spender_type
+ORDER BY City, Spender_type;
+
+-- Percentage of customers in each category within the same city
+WITH Customer_total AS (
+	SELECT 
+		C.City,
+        C.Customer_id,
+		SUM(O.Order_amount) AS Total_Spent
+	FROM CUSTOMER C
+    LEFT JOIN ORDERS O
+		ON C.Customer_id = O.Customer_id
+	GROUP BY 
+		C.Customer_id,
+        C.City
+),
+Customer_category AS (
+	SELECT 
+		City,
+		Customer_id,
+		CASE
+			WHEN Total_spent > 3000 THEN 'High Spender'
+			WHEN Total_spent BETWEEN 1000 AND 3000 THEN 'Medium Spender'
+			ELSE 'Low Spender'
+		END AS Spender_type
+	FROM Customer_total
+),
+City_counts AS (
+	SELECT 
+		City,
+		Spender_type,
+		COUNT(*) AS Customer_Count
+	FROM Customer_category
+	GROUP BY City, Spender_type
+)
+SELECT
+	City,
+    Spender_type,
+    Customer_count,
+    Round( 
+		(Customer_count * 100.0) 
+		/ SUM(Customer_count) OVER (PARTITION BY City), 2
+	) AS Percentage
+FROM City_counts
+ORDER BY City, Spender_type;
+
+-- Show only top category per city (highest %)
+WITH Customer_total AS (
+	SELECT 
+		C.City,
+        C.Customer_id,
+		SUM(O.Order_amount) AS Total_Spent
+	FROM CUSTOMER C
+    LEFT JOIN ORDERS O
+		ON C.Customer_id = O.Customer_id
+	GROUP BY 
+		C.Customer_id,
+        C.City
+),
+Customer_category AS (
+	SELECT 
+		City,
+		Customer_id,
+		CASE
+			WHEN Total_spent > 3000 THEN 'High Spender'
+			WHEN Total_spent BETWEEN 1000 AND 3000 THEN 'Medium Spender'
+			ELSE 'Low Spender'
+		END AS Spender_type
+	FROM Customer_total
+),
+City_counts AS (
+	SELECT 
+		City,
+		Spender_type,
+		COUNT(*) AS Customer_Count
+	FROM Customer_category
+	GROUP BY City, Spender_type
+),
+Percentage AS (
+	SELECT
+		City,
+		Spender_type,
+		Customer_count,
+		Round( 
+			(Customer_count * 100.0) 
+			/ SUM(Customer_count) OVER (PARTITION BY City), 2
+		) AS Percentage
+	FROM City_counts
+),
+Ranking AS (
+SELECT 
+	City,
+	Spender_type,
+	Customer_count,
+    Percentage,
+    DENSE_RANK() OVER (
+		PARTITION BY City
+        ORDER BY Percentage DESC
+	) AS RNK
+FROM Percentage
+)
+SELECT
+	City,
+	Spender_type,
+	Customer_count,
+    Percentage
+FROM Ranking
+WHERE RNK = 1 
+ORDER BY City;
+
+-- Same question using Row no
+WITH Customer_total AS (
+	SELECT 
+		C.City,
+        C.Customer_id,
+		SUM(O.Order_amount) AS Total_Spent
+	FROM CUSTOMER C
+    LEFT JOIN ORDERS O
+		ON C.Customer_id = O.Customer_id
+	GROUP BY 
+		C.Customer_id,
+        C.City
+),
+Customer_category AS (
+	SELECT 
+		City,
+		Customer_id,
+		CASE
+			WHEN Total_spent > 3000 THEN 'High Spender'
+			WHEN Total_spent BETWEEN 1000 AND 3000 THEN 'Medium Spender'
+			ELSE 'Low Spender'
+		END AS Spender_type
+	FROM Customer_total
+),
+City_counts AS (
+	SELECT 
+		City,
+		Spender_type,
+		COUNT(*) AS Customer_Count
+	FROM Customer_category
+	GROUP BY City, Spender_type
+),
+Percentage AS (
+	SELECT
+		City,
+		Spender_type,
+		Customer_count,
+		Round( 
+			(Customer_count * 100.0) 
+			/ SUM(Customer_count) OVER (PARTITION BY City), 2
+		) AS Percentage
+	FROM City_counts
+),
+Ranking AS (
+SELECT 
+	City,
+	Spender_type,
+	Customer_count,
+    Percentage,
+    ROW_NUMBER() OVER (
+		PARTITION BY City
+        ORDER BY Percentage DESC
+	) AS RN
+FROM Percentage
+)
+SELECT
+	City,
+	Spender_type,
+	Customer_count,
+    Percentage
+FROM Ranking
+WHERE RN = 1 
+ORDER BY City;
