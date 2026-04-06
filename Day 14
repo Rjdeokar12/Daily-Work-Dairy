@@ -1,0 +1,40 @@
+SELECT DISTINCT
+	C.Customer_id,
+	SUM(O.Order_amount) OVER (
+		PARTITION BY C.Customer_id
+	) AS Total_spent
+FROM CUSTOMER C
+JOIN ORDERS O
+	ON C.Customer_id = O.Customer_id;
+    
+WITH Customer_spend AS (
+	SELECT 
+		Customer_id,
+		SUM(Order_amount) AS Total_spent
+	FROM ORDERS
+	GROUP BY Customer_id
+),
+Customer_city AS (
+	SELECT 
+		C.Customer_id,
+		C.City,
+		CS.Total_spent
+	FROM CUSTOMER C
+	LEFT JOIN Customer_spend CS
+		ON C.Customer_id = CS.Customer_id
+),
+Ranking AS (
+	SELECT *,
+		DENSE_RANK() OVER (
+			PARTITION BY City
+			ORDER BY Total_spent DESC
+		) AS RNK
+	FROM Customer_city
+)
+SELECT 
+	City,
+	Customer_id,
+	Total_spent
+FROM Ranking
+WHERE RNK <= 2
+ORDER BY City, RNK;
