@@ -1,0 +1,85 @@
+WITH Customer_spend AS (
+	SELECT 
+		Customer_id,
+		SUM(Order_amount) AS Total_spent
+	FROM ORDERS
+	GROUP BY Customer_id
+),
+Customer_city AS (
+	SELECT 
+		C.Customer_id,
+		C.City,
+		CS.Total_spent
+	FROM CUSTOMER C
+	LEFT JOIN Customer_spend CS
+		ON C.Customer_id = CS.Customer_id
+),
+Ranking AS (
+	SELECT *,
+		DENSE_RANK() OVER (
+			PARTITION BY City
+			ORDER BY Total_spent DESC
+		) AS RNK
+	FROM Customer_city
+)
+SELECT 
+	City,
+	Customer_id,
+	Total_spent
+FROM Ranking
+WHERE RNK <= 2
+ORDER BY City, RNK ;
+
+WITH City_Revenue AS (
+	SELECT 
+		C.City,
+		COALESCE(SUM(O.Order_amount),0) AS Total_Spent
+	FROM CUSTOMER C
+	LEFT JOIN ORDERS O
+		ON C.Customer_id = O.Customer_id
+	GROUP  BY C.City
+),
+Ranking AS (
+	SELECT *,
+		DENSE_RANK() OVER (
+			ORDER BY Total_Spent DESC
+		) AS RNK
+	FROM City_Revenue
+)
+SELECT * 
+FROM Ranking 
+WHERE RNK <=2;
+
+WITH Latest_Orders AS (
+	SELECT *
+    FROM (
+		SELECT
+			O.*,
+            ROW_NUMBER() OVER (
+				PARTITION BY Customer_id
+                ORDER BY Order_date DESC, Order_id DESC
+			) AS RN
+		FROM ORDERS O
+	)t
+    WHERE RN = 1
+), 
+Customer_city AS (
+	SELECT
+		C.City,
+        L.Customer_id,
+        L.Order_amount
+	FROM CUSTOMER C
+    JOIN Latest_Orders L
+		ON C.Customer_id = L.Customer_id
+),
+Ranking AS (
+	SELECT *,
+		DENSE_RANK() OVER (
+			PARTITION BY City
+            ORDER BY Order_amount DESC
+		) AS RNK
+	FROM Customer_City
+)
+SELECT *
+FROM Ranking
+WHERE RNK <=2;
