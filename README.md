@@ -27,14 +27,14 @@ Key Insights
   
 Final Conclusions
 
-Revenue is highly concentrated among a few key customers
+Revenue is highly concentrated among a few key customers.
 
-Certain cities outperform others significantly
+Certain cities outperform others significantly.
 
-There is untapped potential in reactivating inactive customers
+There is untapped potential in reactivating inactive customers.
 
-Sales patterns are inconsistent across different days
+Sales patterns are inconsistent across different days.
 
-Operational efficiency is strong but can be further improved
+Operational efficiency is strong but can be further improved.
 
-Expanding efforts in low-performing regions can drive overall growth
+Expanding efforts in low-performing regions can drive overall growth.
